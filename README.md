@@ -1,5 +1,10 @@
 # Telemetry Quality Gate
 
+[![CI](https://github.com/arslan1t/telemetry-quality-gate/actions/workflows/ci.yml/badge.svg)](https://github.com/arslan1t/telemetry-quality-gate/actions/workflows/ci.yml)
+![python](https://img.shields.io/badge/python-3.10%2B-3776ab)
+![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
+![license](https://img.shields.io/badge/license-MIT-blue)
+
 A dependency-free Python CLI that checks timestamped sensor CSV files before
 analysis. Reports duplicate timestamps, out-of-order samples, sampling gaps,
 invalid numbers, missing sensor identifiers, and values outside configured bounds.
