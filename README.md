@@ -54,5 +54,4 @@ sample count.
 
 ## Development
 
-Initial implementation prepared with AI assistance. No production deployment or
-hardware integration is claimed. MIT licensed.
+No production deployment or hardware integration is claimed. MIT licensed.
