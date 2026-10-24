@@ -1,0 +1,9 @@
+timestamp,sensor,value
+0,motor_temp,23
+0,battery_temp,28
+1,motor_temp,24
+1,battery_temp,29
+2,motor_temp,25
+2,battery_temp,28
+3,motor_temp,24
+3,battery_temp,27

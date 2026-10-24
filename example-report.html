@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Telemetry Quality Gate — example_anomalies.csv</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#162a35;background:#edf2f3}
+*{box-sizing:border-box}body{margin:0;padding:48px 24px}main{max-width:1080px;margin:auto}
+header{border-top:5px solid #177264;padding-top:24px;display:flex;gap:24px;justify-content:space-between;align-items:start}
+.eyebrow{font-size:12px;letter-spacing:.16em;font-weight:700;color:#43616a;text-transform:uppercase}
+h1{font-size:clamp(28px,4vw,46px);letter-spacing:-.045em;line-height:1.1;margin:14px 0}p{line-height:1.6}
+.source{overflow-wrap:anywhere;color:#45616a;margin-top:0}.badge{font-size:12px;font-weight:800;letter-spacing:.08em;border:1px solid currentColor;border-radius:4px;padding:8px 12px;white-space:nowrap}
+.PASS{color:#146a4c;background:#e0f2e8}.REVIEW{color:#8d4a10;background:#fff0d9}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#c9d6d9;border:1px solid #c9d6d9;margin:30px 0}
+.metric{padding:22px;background:#fff}.metric strong{display:block;font-size:34px;font-weight:650;letter-spacing:-.04em}.metric span{font-size:13px;color:#45616a}
+h2{font-size:20px;letter-spacing:-.025em;margin:30px 0 12px}.panel{background:white;border:1px solid #c9d6d9;padding:24px}
+.settings{display:flex;flex-wrap:wrap;gap:12px 32px;font-size:14px;color:#45616a}.settings b{color:#162a35}
+table{width:100%;border-collapse:collapse;font-size:14px;text-align:left}th{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#45616a;background:#f4f7f7}
+th,td{padding:13px 14px;border-bottom:1px solid #e0e8e9;vertical-align:top;overflow-wrap:anywhere}tr:last-child td{border-bottom:0}.number{text-align:right;font-variant-numeric:tabular-nums}
+.table-scroll{overflow:auto;border:1px solid #c9d6d9;background:#fff}code{font-size:12px;white-space:pre-wrap}.empty{padding:28px;color:#45616a}
+.note{font-size:13px;color:#45616a;margin:14px 0 0}footer{font-size:12px;line-height:1.7;color:#45616a;border-top:1px solid #c9d6d9;padding-top:20px;margin-top:32px}
+@media(max-width:650px){body{padding:24px 14px}.metrics{grid-template-columns:repeat(2,1fr)}.metric{padding:16px}.panel{padding:18px}th,td{padding:10px 8px}header{gap:12px}}
+@media print{body{padding:0;background:#fff}.table-scroll{overflow:visible}header{break-inside:avoid}.metric{padding:14px}tr{break-inside:avoid}}
+</style>
+</head>
+<body><main>
+<header><div><div class="eyebrow">Offline sensor data / quality report</div><h1>Telemetry Quality Gate</h1><p class="source">example_anomalies.csv</p></div><span class="badge REVIEW">REVIEW</span></header>
+<section class="metrics" aria-label="Audit summary">
+<div class="metric"><strong>8</strong><span>Rows checked</span></div>
+<div class="metric"><strong>2</strong><span>Sensors with numeric samples</span></div>
+<div class="metric"><strong>5</strong><span>Rows with issues</span></div>
+<div class="metric"><strong>6</strong><span>Total issues</span></div>
+</section>
+<section class="panel"><div class="eyebrow">Configured checks</div><div class="settings"><p>Value range <b>-40 to 125</b> (inclusive)</p><p>Maximum gap <b>2 seconds</b></p></div><p class="note">Ordering, gaps and duplicates are checked independently for each sensor. One row can produce more than one issue.</p></section>
+<h2>Issue breakdown</h2><div class="table-scroll"><table><thead><tr><th scope="col">Category</th><th scope="col" class="number">Count</th></tr></thead><tbody><tr><td>Missing sensor identifier</td><td class="number">1</td></tr><tr><td>Invalid or nonfinite number</td><td class="number">1</td></tr><tr><td>Value outside configured bounds</td><td class="number">1</td></tr><tr><td>Duplicate timestamp</td><td class="number">1</td></tr><tr><td>Out-of-order sample</td><td class="number">1</td></tr><tr><td>Sampling gap</td><td class="number">1</td></tr></tbody></table></div>
+<h2>Issue details</h2><div class="table-scroll"><table><thead><tr><th scope="col" class="number">CSV line</th><th scope="col">Sensor</th><th scope="col">Category</th><th scope="col">Details</th></tr></thead><tbody><tr><td class="number">3</td><td>motor_temp</td><td>Duplicate timestamp</td><td><code>{&quot;timestamp&quot;: 0.0}</code></td></tr><tr><td class="number">4</td><td>motor_temp</td><td>Value outside configured bounds</td><td><code>{&quot;value&quot;: 160.0}</code></td></tr><tr><td class="number">4</td><td>motor_temp</td><td>Sampling gap</td><td><code>{&quot;seconds&quot;: 5.0}</code></td></tr><tr><td class="number">5</td><td>motor_temp</td><td>Out-of-order sample</td><td><code>{&quot;timestamp&quot;: 4.0}</code></td></tr><tr><td class="number">7</td><td>battery_temp</td><td>Invalid or nonfinite number</td><td><code>—</code></td></tr><tr><td class="number">8</td><td>(missing)</td><td>Missing sensor identifier</td><td><code>—</code></td></tr></tbody></table></div>
+<footer>Generated by Telemetry Quality Gate · Report schema 1<br>Offline checks do not establish hardware safety or data completeness. CSV line references assume one physical line per record. Empty inputs pass these checks; require a minimum sample count separately.</footer>
+</main></body></html>
