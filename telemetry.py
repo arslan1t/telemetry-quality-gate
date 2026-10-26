@@ -11,9 +11,12 @@ ISSUE_LABELS = {
     'duplicate_timestamp': 'Duplicate timestamp',
     'out_of_order': 'Out-of-order sample',
     'sampling_gap': 'Sampling gap',
+    'insufficient_rows': 'Insufficient CSV records',
 }
 
-def audit(rows,minimum=-40.0,maximum=125.0,max_gap=2.0):
+def audit(rows,minimum=-40.0,maximum=125.0,max_gap=2.0,min_rows=0):
+    if isinstance(min_rows,bool) or not isinstance(min_rows,int) or min_rows<0:
+        raise ValueError('min_rows must be a nonnegative integer')
     if not all(math.isfinite(v) for v in (minimum,maximum,max_gap)) or minimum>maximum or max_gap<=0:
         raise ValueError('Require finite bounds, minimum <= maximum, max_gap > 0')
     issues=[]; previous={}; seen=defaultdict(set); total=0
@@ -38,6 +41,8 @@ def audit(rows,minimum=-40.0,maximum=125.0,max_gap=2.0):
             elif delta>max_gap:issue(line,sensor,'sampling_gap',seconds=delta)
         # Keep a high-water mark: late arrivals must not create false future gaps.
         previous[sensor]=max(timestamp,previous.get(sensor,timestamp))
+    if total<min_rows:
+        issue(None,'','insufficient_rows',scope='dataset',minimum=min_rows,actual=total)
     counts=defaultdict(int)
     for item in issues:counts[item['kind']]+=1
     return dict(schema_version=1,rows=total,sensors=len(seen),passed=not issues,
@@ -50,7 +55,7 @@ def read_csv(path):
             raise ValueError('Required CSV headers: timestamp,sensor,value')
         return list(reader)
 
-def render_html(report, source='Sensor data', minimum=-40.0, maximum=125.0, max_gap=2.0):
+def render_html(report, source='Sensor data', minimum=-40.0, maximum=125.0, max_gap=2.0, min_rows=0):
     """Render an audit result as one portable HTML file, without scripts or assets.
 
     Sensor identifiers and source names are untrusted CSV/file content. Escape
@@ -60,25 +65,34 @@ def render_html(report, source='Sensor data', minimum=-40.0, maximum=125.0, max_
         return escape(str(value), quote=True)
 
     status = 'PASS' if report['passed'] else 'REVIEW'
-    flagged_rows = len({item['line'] for item in report['issues']})
+    flagged_rows = len({item['line'] for item in report['issues']
+                        if item.get('scope') != 'dataset'})
     counts = ''.join(
         '<tr><td>' + safe(label) + '</td><td class="number">'
         + safe(report['issue_counts'].get(kind, 0)) + '</td></tr>'
         for kind, label in ISSUE_LABELS.items()
+        if kind != 'insufficient_rows' or min_rows > 0 or report['issue_counts'].get(kind, 0) > 0
     )
     records = []
     for item in report['issues']:
         detail = {key: value for key, value in item.items()
-                  if key not in ('line', 'sensor', 'kind')}
+                  if key not in ('line', 'sensor', 'kind', 'scope')}
+        dataset_issue = item.get('scope') == 'dataset'
         records.append(
-            '<tr><td class="number">' + safe(item['line']) + '</td><td>'
-            + safe(item['sensor'] or '(missing)') + '</td><td>'
+            '<tr><td class="number">' + safe('Dataset' if dataset_issue else item['line']) + '</td><td>'
+            + safe('(all sensors)' if dataset_issue else item['sensor'] or '(missing)') + '</td><td>'
             + safe(ISSUE_LABELS.get(item['kind'], item['kind'])) + '</td><td><code>'
             + safe(json.dumps(detail, sort_keys=True, ensure_ascii=False, allow_nan=False)
                    if detail else '—') + '</code></td></tr>'
         )
     if not records:
         records.append('<tr><td colspan="4" class="empty">No issues found within the configured checks.</td></tr>')
+
+    minimum_rows_setting = ('<p>Minimum CSV records <b>' + safe(min_rows) + '</b></p>'
+                            if min_rows > 0 else '')
+    completeness_note = ('Minimum record count applies to all CSV records, including invalid samples; '
+                         'it does not guarantee valid coverage for every sensor.' if min_rows > 0 else
+                         'Empty inputs pass these checks; require a minimum sample count separately.')
 
     return '''<!doctype html>
 <html lang="en">
@@ -114,10 +128,10 @@ th,td{padding:13px 14px;border-bottom:1px solid #e0e8e9;vertical-align:top;overf
 <div class="metric"><strong>''' + safe(flagged_rows) + '''</strong><span>Rows with issues</span></div>
 <div class="metric"><strong>''' + safe(len(report['issues'])) + '''</strong><span>Total issues</span></div>
 </section>
-<section class="panel"><div class="eyebrow">Configured checks</div><div class="settings"><p>Value range <b>''' + safe(minimum) + ''' to ''' + safe(maximum) + '''</b> (inclusive)</p><p>Maximum gap <b>''' + safe(max_gap) + ''' seconds</b></p></div><p class="note">Ordering, gaps and duplicates are checked independently for each sensor. One row can produce more than one issue.</p></section>
+<section class="panel"><div class="eyebrow">Configured checks</div><div class="settings"><p>Value range <b>''' + safe(minimum) + ''' to ''' + safe(maximum) + '''</b> (inclusive)</p><p>Maximum gap <b>''' + safe(max_gap) + ''' seconds</b></p>''' + minimum_rows_setting + '''</div><p class="note">Ordering, gaps and duplicates are checked independently for each sensor. One row can produce more than one issue.</p></section>
 <h2>Issue breakdown</h2><div class="table-scroll"><table><thead><tr><th scope="col">Category</th><th scope="col" class="number">Count</th></tr></thead><tbody>''' + counts + '''</tbody></table></div>
 <h2>Issue details</h2><div class="table-scroll"><table><thead><tr><th scope="col" class="number">CSV line</th><th scope="col">Sensor</th><th scope="col">Category</th><th scope="col">Details</th></tr></thead><tbody>''' + ''.join(records) + '''</tbody></table></div>
-<footer>Generated by Telemetry Quality Gate · Report schema ''' + safe(report['schema_version']) + '''<br>Offline checks do not establish hardware safety or data completeness. CSV line references assume one physical line per record. Empty inputs pass these checks; require a minimum sample count separately.</footer>
+<footer>Generated by Telemetry Quality Gate · Report schema ''' + safe(report['schema_version']) + '''<br>Offline checks do not establish hardware safety or data completeness. CSV line references assume one physical line per record. ''' + completeness_note + '''</footer>
 </main></body></html>
 '''
 
@@ -128,16 +142,18 @@ def main(argv=None):
     parser.add_argument('--minimum',type=float,default=-40)
     parser.add_argument('--maximum',type=float,default=125)
     parser.add_argument('--max-gap',type=float,default=2)
+    parser.add_argument('--min-rows',type=int,default=0,metavar='N',
+                        help='require at least N CSV records (default: 0; invalid records still count)')
     parser.add_argument('--html-report',type=Path,metavar='PATH',
                         help='also write a standalone HTML quality report to PATH')
     args=parser.parse_args(argv)
     try:
-        report=audit(read_csv(args.csv),args.minimum,args.maximum,args.max_gap)
+        report=audit(read_csv(args.csv),args.minimum,args.maximum,args.max_gap,args.min_rows)
         if args.html_report:
             if args.html_report.resolve() == args.csv.resolve():
                 raise ValueError('HTML report path must differ from the input CSV path')
             args.html_report.write_text(
-                render_html(report,args.csv.name,args.minimum,args.maximum,args.max_gap),
+                render_html(report,args.csv.name,args.minimum,args.maximum,args.max_gap,args.min_rows),
                 encoding='utf-8')
     except (ValueError,OSError) as error:
         parser.exit(2,str(error)+'\n')
